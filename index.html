@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خط الأعداد الصحيحة التفاعلي</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti for quiz rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        * {
+            font-family: 'Cairo', sans-serif;
+            touch-action: manipulation;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .number-tick {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .number-tick:hover {
+            transform: scale(1.18);
+        }
+
+        /* SVG Vector Animations */
+        .vector-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .vector-path-secondary {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 1.1s 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* Pulse ring highlight */
+        .pulse-target {
+            animation: pulse-ring 1.8s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.25); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md">
+                    <i class="fa-solid fa-calculator text-2xl text-amber-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black tracking-wide">خط الأعداد الصحيحة التفاعلي</h1>
+                    <p class="text-xs text-indigo-100 hidden sm:block">أداة تعليمية تفاعلية لتمثيل الأعداد، معكوس العدد، والجمع والطرح</p>
+                </div>
+            </div>
+
+            <!-- Sound Control Button -->
+            <div class="flex items-center space-x-2 space-x-reverse bg-indigo-800/50 p-1.5 rounded-xl border border-indigo-400/30">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-1.5 rounded-lg bg-indigo-500/40 hover:bg-indigo-500/70 text-xs font-semibold flex items-center gap-2 transition">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-amber-300"></i>
+                    <span id="soundText">الأصوات مفعّلة</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Navigation Tabs -->
+        <div class="max-w-7xl mx-auto px-4 flex space-x-2 space-x-reverse overflow-x-auto no-scrollbar pt-2">
+            <button onclick="switchTab('representation')" id="tab-representation" class="tab-btn active px-5 py-2.5 font-bold text-sm rounded-t-xl transition duration-200 flex items-center gap-2 bg-white text-indigo-700 shadow-md">
+                <i class="fa-solid fa-bullseye"></i>
+                <span>تمثيل الأعداد والمعكوس</span>
+            </button>
+            <button onclick="switchTab('operations')" id="tab-operations" class="tab-btn px-5 py-2.5 font-bold text-sm rounded-t-xl transition duration-200 flex items-center gap-2 bg-indigo-700/60 text-white hover:bg-indigo-700/90">
+                <i class="fa-solid fa-plus-minus"></i>
+                <span>الجمع والطرح على الخط</span>
+            </button>
+            <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-5 py-2.5 font-bold text-sm rounded-t-xl transition duration-200 flex items-center gap-2 bg-indigo-700/60 text-white hover:bg-indigo-700/90">
+                <i class="fa-solid fa-trophy text-amber-300"></i>
+                <span>التحديات والتمارين</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-grow space-y-6">
+
+        <!-- Control Panels Container -->
+        <div class="glass-panel rounded-3xl p-5 shadow-xl border border-white/60">
+            
+            <!-- TAB 1: Number Representation and Inverse Controls -->
+            <div id="controls-representation" class="tab-content space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+                            تمثيل العدد والقيمة المطلقة ومعكوس العدد (النظير الجمعي)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">اختر عدداً لمشاهدة موقع معكوسه والمسافة التي يبعدها عن الصفر</p>
+                    </div>
+
+                    <!-- Range Selector -->
+                    <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl text-xs font-semibold">
+                        <span class="text-slate-600 px-2">نطاق الخط:</span>
+                        <button onclick="setRange(10)" id="range-10" class="px-3 py-1 rounded-lg transition bg-white shadow text-indigo-600 font-bold">10 ±</button>
+                        <button onclick="setRange(15)" id="range-15" class="px-3 py-1 rounded-lg transition text-slate-600 hover:bg-white/50">15 ±</button>
+                        <button onclick="setRange(20)" id="range-20" class="px-3 py-1 rounded-lg transition text-slate-600 hover:bg-white/50">20 ±</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                    <!-- Slider & Number Display -->
+                    <div class="md:col-span-7 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <label class="font-bold text-slate-700 text-sm">حدد العدد المراد تمثيله (س):</label>
+                            <span id="repNumberBadge" class="px-4 py-1 rounded-xl text-lg font-black bg-indigo-600 text-white shadow">5+</span>
+                        </div>
+                        <input type="range" id="repSlider" min="-10" max="10" value="5" step="1" oninput="updateRepresentationFromSlider(this.value)" class="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        <div class="flex justify-between text-xs text-slate-400 font-semibold dir-ltr">
+                            <span id="minRangeLabel">-10</span>
+                            <span>0</span>
+                            <span id="maxRangeLabel">+10</span>
+                        </div>
+                    </div>
+
+                    <!-- Preset Quick Selection Buttons -->
+                    <div class="md:col-span-5 flex flex-wrap gap-2 justify-center md:justify-end">
+                        <button onclick="setRepNumber(-7)" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs border border-rose-200 transition">7-</button>
+                        <button onclick="setRepNumber(-3)" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold text-xs border border-rose-200 transition">3-</button>
+                        <button onclick="setRepNumber(0)" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition">الصفر (0)</button>
+                        <button onclick="setRepNumber(4)" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs border border-blue-200 transition">4+</button>
+                        <button onclick="setRepNumber(8)" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs border border-blue-200 transition">8+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Addition and Subtraction Operation Simulator -->
+            <div id="controls-operations" class="tab-content hidden space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            محاكي الجمع والطرح على خط الأعداد
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">أنشئ أي مسألة جمع أو طرح وشاهد خطوات القفز والتحرك بالتفصيل</p>
+                    </div>
+
+                    <!-- Rules Modal Button -->
+                    <button onclick="openRulesModal()" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-lightbulb text-amber-600"></i>
+                        <span>قواعد الإشارات والحركة</span>
+                    </button>
+                </div>
+
+                <!-- Equation Builder Inputs -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    
+                    <!-- First Operand (A) -->
+                    <div class="md:col-span-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">العدد الأول (أ)</label>
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="adjustOpVal('opA', -1)" class="w-8 h-8 rounded-lg bg-white shadow hover:bg-slate-100 font-bold text-slate-700">-</button>
+                            <input type="number" id="opA" value="-3" min="-20" max="20" onchange="calculateOperation()" class="w-16 text-center text-lg font-black bg-white border border-slate-300 rounded-lg p-1 text-indigo-600">
+                            <button onclick="adjustOpVal('opA', 1)" class="w-8 h-8 rounded-lg bg-white shadow hover:bg-slate-100 font-bold text-slate-700">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Operation Operator Selection -->
+                    <div class="md:col-span-2 flex justify-center">
+                        <div class="bg-indigo-100 p-1 rounded-2xl flex border border-indigo-200 w-full max-w-[140px]">
+                            <button onclick="setOpType('+')" id="opTypeAdd" class="flex-1 py-2 rounded-xl font-black text-base transition bg-indigo-600 text-white shadow">
+                                +
+                            </button>
+                            <button onclick="setOpType('-')" id="opTypeSub" class="flex-1 py-2 rounded-xl font-black text-base transition text-indigo-700 hover:bg-indigo-200/50">
+                                -
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Second Operand (B) -->
+                    <div class="md:col-span-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">العدد الثاني (ب)</label>
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="adjustOpVal('opB', -1)" class="w-8 h-8 rounded-lg bg-white shadow hover:bg-slate-100 font-bold text-slate-700">-</button>
+                            <input type="number" id="opB" value="5" min="-20" max="20" onchange="calculateOperation()" class="w-16 text-center text-lg font-black bg-white border border-slate-300 rounded-lg p-1 text-emerald-600">
+                            <button onclick="adjustOpVal('opB', 1)" class="w-8 h-8 rounded-lg bg-white shadow hover:bg-slate-100 font-bold text-slate-700">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Common Example Presets -->
+                    <div class="md:col-span-4 flex flex-wrap gap-1.5 justify-center md:justify-end">
+                        <button onclick="setOpPreset(-4, '+', 7)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs border border-slate-200">(-4) + (+7)</button>
+                        <button onclick="setOpPreset(3, '-', 8)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs border border-slate-200">(+3) - (+8)</button>
+                        <button onclick="setOpPreset(-2, '-', -5)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs border border-slate-200">(-2) - (-5)</button>
+                        <button onclick="setOpPreset(-5, '+', -3)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs border border-slate-200">(-5) + (-3)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Quiz and Math Challenge Module -->
+            <div id="controls-quiz" class="tab-content hidden space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                            اختبر مهاراتك الرياضية
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">أجب عن الأسئلة المباشرة بالتفاعل مع خط الأعداد أو خيارات الإجابة</p>
+                    </div>
+
+                    <!-- Score and Streak Display -->
+                    <div class="flex items-center gap-4 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl">
+                        <div class="flex items-center gap-1.5 text-amber-700 font-bold text-sm">
+                            <i class="fa-solid fa-star text-amber-500"></i>
+                            <span>النقاط: <strong id="quizScore" class="text-lg text-amber-900">0</strong></span>
+                        </div>
+                        <div class="h-4 w-px bg-amber-300"></div>
+                        <div class="flex items-center gap-1.5 text-slate-600 font-bold text-xs">
+                            <span>السلسلة الصحيحة: <strong id="quizStreak" class="text-indigo-600">0</strong> 🔥</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Prompt Box -->
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="space-y-1 text-center md:text-right">
+                        <span id="quizDifficulty" class="px-2.5 py-0.5 bg-indigo-200 text-indigo-800 rounded-md font-bold text-[10px]">تمرين تفاعلي</span>
+                        <h3 id="quizQuestionText" class="text-lg font-black text-indigo-950">جاري إعداد السؤال...</h3>
+                        <p id="quizHint" class="text-xs text-indigo-600">تلميح: اضغط على العدد المطلوب على خط الأعداد أو حدد الخيار</p>
+                    </div>
+
+                    <div id="quizOptionsContainer" class="flex flex-wrap gap-2 justify-center">
+                        <!-- Options generated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Interactive Canvas / SVG Display Area -->
+        <div class="glass-panel rounded-3xl p-4 sm:p-6 shadow-2xl border border-white/80 relative overflow-hidden">
+            
+            <!-- SVG Line Renderer Viewport -->
+            <div class="w-full overflow-x-auto no-scrollbar py-4" id="svgViewport">
+                <svg id="numberLineSvg" viewBox="0 0 1000 280" class="w-full min-w-[750px] h-auto select-none">
+                    <!-- Dynamic rendering via JS -->
+                </svg>
+            </div>
+
+            <!-- Dynamic Legend Keys -->
+            <div id="canvasLegend" class="flex flex-wrap justify-center items-center gap-4 text-xs font-bold pt-3 border-t border-slate-200/80">
+                <!-- Legend items rendered here -->
+            </div>
+        </div>
+
+        <!-- Educational Math Explanation Card -->
+        <div class="glass-panel rounded-3xl p-5 shadow-lg border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-indigo-600"></i>
+                    <span>الشرح والتفسير الرياضي المباشر:</span>
+                </h3>
+                <span id="equationBadge" class="text-base font-black px-4 py-1 rounded-xl bg-slate-800 text-white shadow-inner dir-ltr">
+                    --
+                </span>
+            </div>
+
+            <!-- Detailed Steps Output -->
+            <div id="explanationText" class="space-y-2 text-sm text-slate-700 leading-relaxed">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-400 py-4 px-6 text-center text-xs mt-6 border-t border-slate-700">
+        <p>تطبيق خط الأعداد الصحيحة التفاعلي - أداة مساعدة للمعلمين والطلاب للشاشات التفاعلية والأجهزة اللوحية</p>
+    </footer>
+
+    <!-- Math Rules Overlay Modal -->
+    <div id="rulesModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-indigo-600"></i>
+                    <span>قواعد الأعداد الصحيحة على خط الأعداد</span>
+                </h3>
+                <button onclick="closeRulesModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <div class="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <h4 class="font-bold text-blue-900 mb-1">1. اتجاه الحركة:</h4>
+                    <p>• التحرك نحو <strong>اليمين</strong> يمثل الأعداد الموجبة أو إضافة عدد موجب.</p>
+                    <p>• التحرك نحو <strong>اليسار</strong> يمثل الأعداد السالبة أو إضافة عدد سالب.</p>
+                </div>
+
+                <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <h4 class="font-bold text-indigo-900 mb-1">2. معكوس العدد (النظير الجمعي):</h4>
+                    <p>هو نفس العدد بـ **إشارة مخالفة**، ويبعد نفس المسافة عن الصفر في الاتجاه المقابل. مجموع العدد ومعكوسه يساوي صفر دائماً: A + (-A) = 0.</p>
+                </div>
+
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <h4 class="font-bold text-emerald-900 mb-1">3. قاعدة الطرح الذهبية:</h4>
+                    <p>طرح أي عدد يعادل **جمع معكوسه**: A - B = A + (-B). لذلك فإن طرح عدد سالب يكوّن حركة نحو اليمين كأننا نضيف عدداً موجباً!</p>
+                </div>
+            </div>
+
+            <button onclick="closeRulesModal()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-lg">
+                فهمت، إغلاق النافذة
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global Application State Variables
+        let currentTab = 'representation'; // 'representation' | 'operations' | 'quiz'
+        let rangeLimit = 10;               // Axis boundary (-10 to +10 default)
+        let isSoundOn = true;
+
+        // Tab 1 Representation State
+        let repVal = 5;
+
+        // Tab 2 Operations State
+        let opA = -3;
+        let opType = '+';
+        let opB = 5;
+
+        // Tab 3 Quiz State
+        let quizScore = 0;
+        let quizStreak = 0;
+        let currentQuiz = null;
+
+        // Web Audio Synthesizer Context
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!isSoundOn) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch(e) {
+                console.log("Audio awaiting user interaction");
+            }
+        }
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            const btnText = document.getElementById('soundText');
+            const btnIcon = document.getElementById('soundIcon');
+            if (isSoundOn) {
+                btnText.innerText = "الأصوات مفعّلة";
+                btnIcon.className = "fa-solid fa-volume-high text-amber-300";
+            } else {
+                btnText.innerText = "الأصوات مكتومة";
+                btnIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            playSound('jump');
+
+            // Update Tab Headers Styling
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-indigo-700', 'shadow-md');
+                btn.classList.add('bg-indigo-700/60', 'text-white');
+            });
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.classList.remove('bg-indigo-700/60', 'text-white');
+            activeBtn.classList.add('bg-white', 'text-indigo-700', 'shadow-md');
+
+            // Hide/Show Controls Panel
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`controls-${tab}`).classList.remove('hidden');
+
+            if (tab === 'quiz') {
+                generateNewQuiz();
+            } else {
+                render();
+            }
+        }
+
+        function setRange(r) {
+            rangeLimit = r;
+            document.querySelectorAll('[id^="range-"]').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow', 'text-indigo-600', 'font-bold');
+                btn.classList.add('text-slate-600');
+            });
+            const activeRangeBtn = document.getElementById(`range-${r}`);
+            if (activeRangeBtn) {
+                activeRangeBtn.classList.add('bg-white', 'shadow', 'text-indigo-600', 'font-bold');
+            }
+
+            document.getElementById('repSlider').min = -r;
+            document.getElementById('repSlider').max = r;
+            document.getElementById('minRangeLabel').innerText = `-${r}`;
+            document.getElementById('maxRangeLabel').innerText = `+${r}`;
+
+            repVal = Math.max(-r, Math.min(r, repVal));
+            document.getElementById('repSlider').value = repVal;
+
+            render();
+        }
+
+        function setRepNumber(num) {
+            repVal = parseInt(num);
+            document.getElementById('repSlider').value = repVal;
+            updateRepresentationUI();
+        }
+
+        function updateRepresentationFromSlider(val) {
+            repVal = parseInt(val);
+            updateRepresentationUI();
+        }
+
+        function updateRepresentationUI() {
+            playSound('jump');
+            const badge = document.getElementById('repNumberBadge');
+            badge.innerText = repVal > 0 ? `+${repVal}` : `${repVal}`;
+            if (repVal > 0) badge.className = "px-4 py-1 rounded-xl text-lg font-black bg-blue-600 text-white shadow";
+            else if (repVal < 0) badge.className = "px-4 py-1 rounded-xl text-lg font-black bg-rose-600 text-white shadow";
+            else badge.className = "px-4 py-1 rounded-xl text-lg font-black bg-slate-700 text-white shadow";
+
+            render();
+        }
+
+        function adjustOpVal(target, delta) {
+            const input = document.getElementById(target);
+            let val = parseInt(input.value) || 0;
+            val = Math.max(-20, Math.min(20, val + delta));
+            input.value = val;
+            calculateOperation();
+        }
+
+        function setOpType(type) {
+            opType = type;
+            const btnAdd = document.getElementById('opTypeAdd');
+            const btnSub = document.getElementById('opTypeSub');
+
+            if (type === '+') {
+                btnAdd.className = "flex-1 py-2 rounded-xl font-black text-base transition bg-indigo-600 text-white shadow";
+                btnSub.className = "flex-1 py-2 rounded-xl font-black text-base transition text-indigo-700 hover:bg-indigo-200/50";
+            } else {
+                btnSub.className = "flex-1 py-2 rounded-xl font-black text-base transition bg-indigo-600 text-white shadow";
+                btnAdd.className = "flex-1 py-2 rounded-xl font-black text-base transition text-indigo-700 hover:bg-indigo-200/50";
+            }
+            calculateOperation();
+        }
+
+        function setOpPreset(a, type, b) {
+            document.getElementById('opA').value = a;
+            document.getElementById('opB').value = b;
+            setOpType(type);
+        }
+
+        function calculateOperation() {
+            opA = parseInt(document.getElementById('opA').value) || 0;
+            opB = parseInt(document.getElementById('opB').value) || 0;
+
+            const result = opType === '+' ? opA + opB : opA - opB;
+            const maxNeeded = Math.max(Math.abs(opA), Math.abs(result), Math.abs(opA + (opType === '+' ? opB : -opB)));
+            
+            if (maxNeeded > 15) setRange(20);
+            else if (maxNeeded > 10) setRange(15);
+
+            playSound('jump');
+            render();
+        }
+
+        function render() {
+            if (currentTab === 'representation') renderRepresentation();
+            else if (currentTab === 'operations') renderOperations();
+            else if (currentTab === 'quiz') renderQuizView();
+        }
+
+        const SVG_WIDTH = 1000;
+        const SVG_HEIGHT = 280;
+        const Y_AXIS = 190;
+        const PADDING_X = 60;
+
+        function getXCoord(val) {
+            const availableWidth = SVG_WIDTH - (PADDING_X * 2);
+            const ratio = (val - (-rangeLimit)) / (rangeLimit * 2);
+            return PADDING_X + ratio * availableWidth;
+        }
+
+        function createSVGMarker(id, color) {
+            return `
+                <marker id="${id}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="${color}" />
+                </marker>
+            `;
+        }
+
+        function renderRepresentation() {
+            const svg = document.getElementById('numberLineSvg');
+            const absVal = Math.abs(repVal);
+            const invVal = -repVal;
+
+            let html = `<defs>
+                ${createSVGMarker('arrow-pos', '#2563eb')}
+                ${createSVGMarker('arrow-neg', '#e11d48')}
+                ${createSVGMarker('arrow-inv', '#a855f7')}
+            </defs>`;
+
+            html += renderBaseLine();
+
+            if (repVal !== 0) {
+                const x0 = getXCoord(0);
+                const xRep = getXCoord(repVal);
+                const xInv = getXCoord(invVal);
+
+                const colorMain = repVal > 0 ? '#2563eb' : '#e11d48';
+                const markerMain = repVal > 0 ? 'url(#arrow-pos)' : 'url(#arrow-neg)';
+
+                const heightArc1 = 50 + (absVal * 3);
+                const pathMain = `M ${x0} ${Y_AXIS - 10} Q ${(x0 + xRep)/2} ${Y_AXIS - 10 - heightArc1} ${xRep} ${Y_AXIS - 15}`;
+
+                html += `
+                    <!-- Main Number Vector Arc -->
+                    <path d="${pathMain}" fill="none" stroke="${colorMain}" stroke-width="4" marker-end="${markerMain}" class="vector-path"/>
+                    <text x="${(x0 + xRep)/2}" y="${Y_AXIS - 15 - heightArc1/2}" fill="${colorMain}" font-weight="900" font-size="15" text-anchor="middle">
+                        المسافة = ${absVal} وحدات (|${repVal}|)
+                    </text>
+
+                    <!-- Primary Target Point -->
+                    <circle cx="${xRep}" cy="${Y_AXIS}" r="10" fill="${colorMain}" class="pulse-target" />
+                    <text x="${xRep}" y="${Y_AXIS + 38}" fill="${colorMain}" font-weight="900" font-size="16" text-anchor="middle">
+                        العدد: ${repVal > 0 ? '+' + repVal : repVal}
+                    </text>
+                `;
+
+                // Additive Inverse Vector Arc
+                const pathInv = `M ${x0} ${Y_AXIS - 10} Q ${(x0 + xInv)/2} ${Y_AXIS - 10 - heightArc1} ${xInv} ${Y_AXIS - 15}`;
+
+                html += `
+                    <!-- Inverse Vector Arc -->
+                    <path d="${pathInv}" fill="none" stroke="#a855f7" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow-inv)" class="vector-path-secondary"/>
+                    
+                    <!-- Inverse Point -->
+                    <circle cx="${xInv}" cy="${Y_AXIS}" r="9" fill="#a855f7" />
+                    <text x="${xInv}" y="${Y_AXIS + 38}" fill="#a855f7" font-weight="900" font-size="15" text-anchor="middle">
+                        المعكوس: ${invVal > 0 ? '+' + invVal : invVal}
+                    </text>
+                `;
+            } else {
+                const x0 = getXCoord(0);
+                html += `
+                    <circle cx="${x0}" cy="${Y_AXIS}" r="12" fill="#0f172a" />
+                    <text x="${x0}" y="${Y_AXIS - 30}" fill="#0f172a" font-weight="900" font-size="16" text-anchor="middle">
+                        الصفر محايد (معكوس الصفر هو الصفر نفسه)
+                    </text>
+                `;
+            }
+
+            svg.innerHTML = html;
+
+            document.getElementById('canvasLegend').innerHTML = `
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-600"></span> <span>العدد الأصلي</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-500"></span> <span>المعكوس (النظير الجمعي)</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-900"></span> <span>نقطة الصفر</span></div>
+            `;
+
+            document.getElementById('equationBadge').innerText = `العدد: ${repVal > 0 ? '+' + repVal : repVal} | المعكوس: ${invVal > 0 ? '+' + invVal : invVal}`;
+            
+            let exp = `<p>• <strong>موقع العدد الأصلي:</strong> يقع عند النقطة <span class="font-bold text-blue-600">${repVal}</span> وتبعد <span class="font-bold">${absVal}</span> وحدات عن الصفر (القيمة المطلقة: |${repVal}| = ${absVal}).</p>`;
+            if (repVal !== 0) {
+                exp += `<p>• <strong>معكوس العدد (النظير الجمعي):</strong> هو العدد <span class="font-bold text-purple-600">${invVal}</span> وهو يبعد نفس المسافة (${absVal} وحدات) عن الصفر ولكن في <strong>الاتجاه المعاكس</strong>.</p>`;
+                exp += `<p>• <strong>خاصية النظير الجمعي:</strong> حاصل جمع أي عدد مع معكوسه يساوي صفر دائماً: (${repVal}) + (${invVal}) = 0.</p>`;
+            } else {
+                exp += `<p>• الصفر هو نقطة الأصل والمنتصف المحايدة على خط الأعداد.</p>`;
+            }
+            document.getElementById('explanationText').innerHTML = exp;
+        }
+
+        function renderOperations() {
+            const svg = document.getElementById('numberLineSvg');
+            
+            let effectiveStep = opB;
+            if (opType === '-') {
+                effectiveStep = -opB;
+            }
+            const finalResult = opA + effectiveStep;
+
+            let html = `<defs>
+                ${createSVGMarker('arrow-step1', '#4f46e5')}
+                ${createSVGMarker('arrow-step2', effectiveStep >= 0 ? '#10b981' : '#f43f5e')}
+            </defs>`;
+
+            html += renderBaseLine();
+
+            const x0 = getXCoord(0);
+            const xA = getXCoord(opA);
+            const xFinal = getXCoord(finalResult);
+
+            // Step 1 Vector: 0 to A
+            const height1 = 45 + Math.abs(opA) * 2;
+            const path1 = `M ${x0} ${Y_AXIS - 10} Q ${(x0 + xA)/2} ${Y_AXIS - 10 - height1} ${xA} ${Y_AXIS - 15}`;
+            
+            html += `
+                <!-- Arrow Step 1 -->
+                <path d="${path1}" fill="none" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow-step1)" class="vector-path"/>
+                <text x="${(x0 + xA)/2}" y="${Y_AXIS - 12 - height1/2}" fill="#4f46e5" font-weight="900" font-size="14" text-anchor="middle">
+                    الخطوة 1: الانطلاق من 0 إلى (${opA > 0 ? '+' + opA : opA})
+                </text>
+                <circle cx="${xA}" cy="${Y_AXIS}" r="7" fill="#4f46e5" />
+            `;
+
+            // Step 2 Vector: A to Final Result
+            if (effectiveStep !== 0) {
+                const color2 = effectiveStep > 0 ? '#10b981' : '#f43f5e';
+                const marker2 = 'url(#arrow-step2)';
+                const height2 = height1 + 35;
+                const path2 = `M ${xA} ${Y_AXIS - 10} Q ${(xA + xFinal)/2} ${Y_AXIS - 10 - height2} ${xFinal} ${Y_AXIS - 15}`;
+
+                const directionText = effectiveStep > 0 ? `قفز لليمين (+${effectiveStep})` : `قفز لليسار (${effectiveStep})`;
+
+                html += `
+                    <!-- Arrow Step 2 -->
+                    <path d="${path2}" fill="none" stroke="${color2}" stroke-width="4" stroke-dasharray="8,4" marker-end="${marker2}" class="vector-path-secondary"/>
+                    <text x="${(xA + xFinal)/2}" y="${Y_AXIS - 12 - height2/2}" fill="${color2}" font-weight="900" font-size="14" text-anchor="middle">
+                        الخطوة 2: ${directionText}
+                    </text>
+                `;
+            }
+
+            // Final Output Marker Point
+            html += `
+                <circle cx="${xFinal}" cy="${Y_AXIS}" r="11" fill="#0f172a" class="pulse-target" />
+                <text x="${xFinal}" y="${Y_AXIS + 38}" fill="#0f172a" font-weight="900" font-size="17" text-anchor="middle">
+                    الناتج: ${finalResult > 0 ? '+' + finalResult : finalResult}
+                </text>
+            `;
+
+            svg.innerHTML = html;
+
+            document.getElementById('canvasLegend').innerHTML = `
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-indigo-600"></span> <span>الخطوة الأولى (العدد الأول)</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> <span>قفز لليمين (إضافة موجب / طرح سالب)</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500"></span> <span>قفز لليسار (إضافة سالب / طرح موجب)</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-900"></span> <span>النتيجة النهائية</span></div>
+            `;
+
+            const eqStr = `(${opA > 0 ? '+' + opA : opA}) ${opType} (${opB > 0 ? '+' + opB : opB}) = ${finalResult > 0 ? '+' + finalResult : finalResult}`;
+            document.getElementById('equationBadge').innerText = eqStr;
+
+            let expHtml = `<p>• <strong>الخطوة الأولى:</strong> نبدأ من نقطة الصفر ونتحرك بمقدار <span class="font-bold text-indigo-600">${Math.abs(opA)}</span> وحدات ${opA >= 0 ? 'لليمين' : 'لليسار'} للوصول إلى العدد <strong>${opA}</strong>.</p>`;
+            
+            if (opType === '+') {
+                if (opB >= 0) {
+                    expHtml += `<p>• <strong>الخطوة الثانية (إضافة عدد موجب):</strong> نضيف <span class="font-bold text-emerald-600">+${opB}</span>، بالتحرك <strong>لليمين</strong> بمقدار ${opB} خطوات من موقعنا الحالي (${opA}).</p>`;
+                } else {
+                    expHtml += `<p>• <strong>الخطوة الثانية (إضافة عدد سالب):</strong> نضيف <span class="font-bold text-rose-600">${opB}</span>، بالتحرك <strong>لليسار</strong> بمقدار ${Math.abs(opB)} خطوات من موقعنا الحالي (${opA}).</p>`;
+                }
+            } else {
+                if (opB >= 0) {
+                    expHtml += `<p>• <strong>الخطوة الثانية (طرح عدد موجب):</strong> طرح <span class="font-bold">+${opB}</span> يعادل إضافة معكوسه (<span class="font-bold text-rose-600">-${opB}</span>)، فنقفيز <strong>لليسار</strong> بمقدار ${opB} خطوات.</p>`;
+                } else {
+                    expHtml += `<p>• <strong>الخطوة الثانية (طرح عدد سالب):</strong> <span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold">قاعدة هامة:</span> طرح عدد سالب (<span class="font-bold">${opB}</span>) يتحول إلى <strong>جمع المعكوس الموجب</strong> (<span class="font-bold text-emerald-600">+${Math.abs(opB)}</span>)، ونتحرك <strong>لليمين</strong> بمقدار ${Math.abs(opB)} خطوات!</p>`;
+                }
+            }
+
+            expHtml += `<p class="pt-1 text-slate-900 font-bold">• النقطة التي وصلنا إليها هي النتيجة: <span class="text-indigo-700 font-black">${finalResult}</span>.</p>`;
+            document.getElementById('explanationText').innerHTML = expHtml;
+        }
+
+        function renderBaseLine() {
+            let html = `
+                <!-- Main Axis Line -->
+                <line x1="${PADDING_X - 20}" y1="${Y_AXIS}" x2="${SVG_WIDTH - PADDING_X + 20}" y2="${Y_AXIS}" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+                
+                <!-- Axis Arrows -->
+                <path d="M ${PADDING_X - 25} ${Y_AXIS} L ${PADDING_X - 10} ${Y_AXIS - 7} L ${PADDING_X - 10} ${Y_AXIS + 7} z" fill="#334155" />
+                <path d="M ${SVG_WIDTH - PADDING_X + 25} ${Y_AXIS} L ${SVG_WIDTH - PADDING_X + 10} ${Y_AXIS - 7} L ${SVG_WIDTH - PADDING_X + 10} ${Y_AXIS + 7} z" fill="#334155" />
+            `;
+
+            for (let i = -rangeLimit; i <= rangeLimit; i++) {
+                const x = getXCoord(i);
+                const isZero = i === 0;
+                const tickHeight = isZero ? 20 : 12;
+                const strokeColor = isZero ? '#0f172a' : '#64748b';
+                const strokeWidth = isZero ? '3.5' : '2';
+
+                let textColor = 'fill-slate-600';
+                let fontWeight = 'font-semibold';
+                if (i > 0) textColor = 'fill-blue-700';
+                if (i < 0) textColor = 'fill-rose-700';
+                if (isZero) { textColor = 'fill-slate-900'; fontWeight = 'font-black'; }
+
+                html += `
+                    <g class="number-tick" onclick="onTickClick(${i})">
+                        <line x1="${x}" y1="${Y_AXIS - tickHeight}" x2="${x}" y2="${Y_AXIS + tickHeight}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />
+                        <text x="${x}" y="${Y_AXIS + 28}" class="${textColor} ${fontWeight}" font-size="${isZero ? '16' : '13'}" text-anchor="middle">
+                            ${i > 0 ? '+' + i : i}
+                        </text>
+                    </g>
+                `;
+            }
+
+            return html;
+        }
+
+        function onTickClick(val) {
+            if (currentTab === 'representation') {
+                setRepNumber(val);
+            } else if (currentTab === 'quiz') {
+                checkQuizAnswer(val);
+            }
+        }
+
+        function generateNewQuiz() {
+            const types = ['representation', 'inverse', 'addition', 'subtraction'];
+            const type = types[Math.floor(Math.random() * types.length)];
+
+            let qText = "";
+            let correctAns = 0;
+            let options = [];
+
+            if (type === 'representation') {
+                const target = Math.floor(Math.random() * (rangeLimit * 2 + 1)) - rangeLimit;
+                qText = `حدد موقع العدد: (${target > 0 ? '+' + target : target}) على خط الأعداد.`;
+                correctAns = target;
+                options = [];
+            } else if (type === 'inverse') {
+                const num = Math.floor(Math.random() * (rangeLimit * 1.5)) - Math.floor(rangeLimit * 0.75);
+                qText = `ما هو معكوس (النظير الجمعي) للعدد (${num > 0 ? '+' + num : num})؟`;
+                correctAns = -num;
+                options = generateOptions(correctAns);
+            } else if (type === 'addition') {
+                const a = Math.floor(Math.random() * 12) - 6;
+                const b = Math.floor(Math.random() * 12) - 6;
+                qText = `أوجد نتيجة الجمع: (${a > 0 ? '+' + a : a}) + (${b > 0 ? '+' + b : b})`;
+                correctAns = a + b;
+                options = generateOptions(correctAns);
+            } else if (type === 'subtraction') {
+                const a = Math.floor(Math.random() * 10) - 5;
+                const b = Math.floor(Math.random() * 10) - 5;
+                qText = `أوجد نتيجة الطرح: (${a > 0 ? '+' + a : a}) - (${b > 0 ? '+' + b : b})`;
+                correctAns = a - b;
+                options = generateOptions(correctAns);
+            }
+
+            currentQuiz = { type, qText, correctAns };
+
+            document.getElementById('quizQuestionText').innerText = qText;
+            const hintElem = document.getElementById('quizHint');
+            const optionsContainer = document.getElementById('quizOptionsContainer');
+            optionsContainer.innerHTML = '';
+
+            if (options.length === 0) {
+                hintElem.innerText = "تلميح: اضغط مباشرة على الرقم الصحيح من خط الأعداد أدناه";
+            } else {
+                hintElem.innerText = "تلميح: اختر الإجابة المناسبة أو انقر موقعها على الخط";
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = "px-4 py-2 bg-white hover:bg-indigo-600 hover:text-white text-indigo-900 border border-indigo-200 font-bold rounded-xl shadow-sm transition";
+                    btn.innerText = opt > 0 ? `+${opt}` : `${opt}`;
+                    btn.onclick = () => checkQuizAnswer(opt);
+                    optionsContainer.appendChild(btn);
+                });
+            }
+
+            renderQuizView();
+        }
+
+        function generateOptions(correct) {
+            const opts = new Set([correct]);
+            while (opts.size < 4) {
+                const delta = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+                opts.add(correct + delta);
+            }
+            return Array.from(opts).sort(() => Math.random() - 0.5);
+        }
+
+        function checkQuizAnswer(userAns) {
+            if (!currentQuiz) return;
+
+            if (userAns === currentQuiz.correctAns) {
+                playSound('correct');
+                quizScore += 10;
+                quizStreak += 1;
+                document.getElementById('quizScore').innerText = quizScore;
+                document.getElementById('quizStreak').innerText = quizStreak;
+
+                if (window.confetti) {
+                    confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
+                }
+
+                document.getElementById('explanationText').innerHTML = `
+                    <div class="p-3 bg-emerald-100 text-emerald-900 font-bold rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-xl text-emerald-600"></i>
+                        <span>إجابة صحيحة وممتازة! النتيجة هي (${userAns > 0 ? '+' + userAns : userAns}).</span>
+                    </div>
+                `;
+
+                setTimeout(generateNewQuiz, 1800);
+            } else {
+                playSound('wrong');
+                quizStreak = 0;
+                document.getElementById('quizStreak').innerText = quizStreak;
+
+                document.getElementById('explanationText').innerHTML = `
+                    <div class="p-3 bg-rose-100 text-rose-900 font-bold rounded-xl flex items-center gap-2">
+                        <i class="fa-solid fa-circle-xmark text-xl text-rose-600"></i>
+                        <span>محاولة خاطئة (${userAns}). حاول مرة أخرى أو انتبه للإشارات وحركة القفز!</span>
+                    </div>
+                `;
+            }
+        }
+
+        function renderQuizView() {
+            const svg = document.getElementById('numberLineSvg');
+            let html = renderBaseLine();
+            svg.innerHTML = html;
+
+            document.getElementById('canvasLegend').innerHTML = `
+                <div class="text-slate-600 font-bold">اضغط على أرقام خط الأعداد للإجابة عن التحديات التفاعلية</div>
+            `;
+            document.getElementById('equationBadge').innerText = "وضع التحدي والاختبار";
+        }
+
+        function openRulesModal() {
+            document.getElementById('rulesModal').classList.remove('hidden');
+        }
+
+        function closeRulesModal() {
+            document.getElementById('rulesModal').classList.add('hidden');
+        }
+
+        window.onload = function() {
+            setRange(10);
+            switchTab('representation');
+        };
+    </script>
+</body>
+</html>
